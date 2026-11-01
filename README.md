@@ -1,4 +1,4 @@
-# 45 Video Effects for Claude
+# 48 Video Effects for Claude
 
 Drop your video into Claude, type `/effects` and the name of an effect. That's the whole edit.
 
@@ -39,7 +39,7 @@ Claude checks a few frames first, fixes anything that covers your face, then ren
 
 You can stack effects in one go: *"Add locked-on from 6 to 10s, then orbit from 10 to 13s, then a reject stamp on 'no'."*
 
-## The 45 effects
+## The 48 effects
 
 | # | Type this | What happens |
 |---|---|---|
@@ -88,6 +88,9 @@ You can stack effects in one go: *"Add locked-on from 6 to 10s, then orbit from 
 | 43 | `over-the-shoulder-zoom` | Pushes into one corner, a liquid glass graph pops beside your head, then the other corner with a second graph |
 | 44 | `messages` | iMessage notifications pop in one after another with a soft glow |
 | 45 | `place-in-grid` | You shrink into the centre of your 3x3 profile grid, your reels pop in around you with view counts |
+| 46 | `documentary` | Film look: letterbox bars, muted teal-orange grade, grain, vignette, optional name strip |
+| 47 | `polaroid` | The frame freezes into a captioned polaroid over a blurred you, then the video plays on |
+| 48 | `paper-cut` | You become a paper cut-out on cardboard with a torn sheet and a big word behind you |
 
 Bonus looks: `/effects glitter-spotlight` (golden rays and sparkles), `cover-star look=editorial` (a classic magazine cover) and `liquid-glass-graph look=bento` (a glass dashboard around you).
 

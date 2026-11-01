@@ -8,4 +8,5 @@ MediaPipe Selfie Segmenter (Apache-2.0) — models/NOTICE.md.
 Vendored 2026-10-30 from the main branch. Changes for Reel Studio:
 - scripts/fx.py: the optional `fx_private.py` exec loader is disabled (no code outside this folder is ever executed).
 - setup.sh / words.py / assets/ not included (Reel Studio has its own environment check and word timings).
+- 2026-11-01: three Reel Studio effects added to scripts/fx.py (46 documentary, 47 polaroid, 48 paper-cut) + aliases (doc/film, freeze, cutout); pack = 48.
 - Called only through `tools/vfx.py`, which writes the plan, applies the channel's colours and adds SFX.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""45 starter video effects for Claude, by @vibha.in.progress
+"""48 starter video effects for Claude, by @vibha.in.progress
 
 One effect:    python fx.py orbit in.mp4 out.mp4 --start 3.2 --end 6
 Many effects:  python fx.py --plan plan.json in.mp4 out.mp4
@@ -33,7 +33,9 @@ ALIASES = {'the-noise': 'noise', 'the-lineup': 'lineup', 'bill': 'the-bill', 'to
            'liquid-glass': 'liquid-glass-graph', 'glass-graph': 'liquid-glass-graph', 'carousel': 'carousel-spin', 'match': 'match-cut',
            'toggles': 'apple-toggles', 'led': 'led-sign', 'push': 'slow-push', 'push-in': 'slow-push',
            'ots': 'over-the-shoulder-zoom', 'shoulder-zoom': 'over-the-shoulder-zoom', 'corner-zoom': 'over-the-shoulder-zoom',
-           'imessage': 'messages', 'texts': 'messages', 'notifications': 'messages', 'grid': 'place-in-grid', 'profile-grid': 'place-in-grid'}
+           'imessage': 'messages', 'texts': 'messages', 'notifications': 'messages', 'grid': 'place-in-grid', 'profile-grid': 'place-in-grid',
+           'doc': 'documentary', 'film': 'documentary', 'film-look': 'documentary', 'freeze': 'polaroid', 'freeze-frame': 'polaroid',
+           'papercut': 'paper-cut', 'cut-out': 'paper-cut', 'cutout': 'paper-cut'}
 LOOK_NAMES = {'glitter-spotlight': ('spotlight', 'sparkle'), 'glitter': ('spotlight', 'sparkle')}  # a named look of another effect
 CARD_FX = ('noise', 'orbit', 'carousel-spin', 'place-in-grid', 'check-pills', 'profile-wall', 'phone-fan', 'broll-split', 'timeline')
 
@@ -2059,6 +2061,172 @@ def fx_place_in_grid(c, e):
     comp(c, tile, cx * p, cy * p)
     if p > 0.95: d = Image.new('RGBA', (tw + 8, th + 8), (0, 0, 0, 0)); ImageDraw.Draw(d).rounded_rectangle([2, 2, tw + 5, th + 5], r + 2, outline=(217, 119, 87, 255), width=8); comp(c, d, cx - 4, cy - 4)
 
+
+
+# ---------- Reel Studio additions (documentary, polaroid, paper-cut) ----------
+def _noise_tile(c, key, scale=1, seed=3):
+    """A cached monochrome noise field (0-1), `scale` = how coarse it is."""
+    k = (key, c.W, c.H, scale, seed)
+    if k not in _vig:
+        rnd = np.random.default_rng(seed); w, h = max(2, c.W // scale), max(2, c.H // scale)
+        n = rnd.random((h, w), dtype=np.float32)
+        if scale > 1: n = cv2.resize(cv2.GaussianBlur(n, (0, 0), 1.2), (c.W, c.H), interpolation=cv2.INTER_CUBIC)
+        _vig[k] = n
+    return _vig[k]
+
+
+@effect('documentary', 'film look on you: letterbox bars, muted teal-orange grade, grain, vignette, optional lower third')
+def fx_documentary(c, e):
+    k = ramp(c, e, 0.4, 0.25)
+    lum = (c.img @ np.float32([0.299, 0.587, 0.114]))[..., None]
+    g = lum + (c.img - lum) * 0.72                                         # muted colour
+    g = g + (1 - lum) ** 2 * np.float32([-0.035, 0.02, 0.045]) + lum ** 2 * np.float32([0.05, 0.012, -0.045])  # teal shadows, warm highlights
+    g = np.clip((g - 0.5) * 1.06 + 0.5, 0.035, 0.97)                         # gentle contrast, lifted blacks, soft whites
+    c.img = c.img * (1 - k) + g * k
+    vignette(c, 0.42 * k)
+    gr = float(e.o.get('grain', 0.045))
+    if gr > 0:
+        n = _noise_tile(c, 'grain'); rnd = random.Random(int(c.t * c.fps))
+        n = np.roll(n, (rnd.randrange(c.H), rnd.randrange(c.W)), (0, 1)) - 0.5
+        c.img = c.img + (n * gr * k * (1.2 - lum[..., 0]))[..., None]       # grain shows most in the mids and shadows
+    # letterbox: 2.39 on a landscape frame; on a vertical frame `bars` of the height (top bar ends before the 0.12 safe line)
+    if c.W > c.H: bh = max(0.0, (c.H - c.W / float(e.o.get('ratio', 2.39))) / 2)
+    else: bh = c.H * float(e.o.get('bars', 0.11))
+    bh = int(bh * ease_out(c.lt / 0.45) * clamp((e.d - c.lt) / 0.25))
+    if bh > 0: c.img[:bh] = 0.012; c.img[c.H - bh:] = 0.012
+    al = clamp((e.d - c.lt) / 0.25)
+    if e.o.get('text'):
+        parts = e.o['text'].split('|'); name, role = parts[0], (parts[1] if len(parts) > 1 else '')
+        def lower_third():
+            ni = text_img(name, c.W * 0.052, 'uib', (255, 255, 255), shadow=4)
+            ri = text_img(role, c.W * 0.036, 'serif', CREAM, shadow=4) if role else None
+            w = max(ni.width, ri.width if ri else 0) + int(c.W * 0.03); h = ni.height + (int(ri.height * 0.8) if ri else 0)
+            im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+            ImageDraw.Draw(im).rectangle([0, int(h * 0.14), max(4, c.W // 180), int(h * 0.86)], fill=YELLOW + (255,))
+            im.alpha_composite(ni, (int(c.W * 0.012), 0))
+            if ri: im.alpha_composite(ri, (int(c.W * 0.014), int(ni.height * 0.8)))
+            return im
+        lt3 = cached(e, 'lt3', lower_third)
+        kk = ease_out((c.lt - 0.35) / 0.4)
+        y = min(c.H * 0.77, c.H - bh - c.H * 0.02) - lt3.height              # bottom edge stays above the 0.78 safe line
+        comp(c, lt3, c.W * 0.07 - (1 - kk) * c.W * 0.05, y, kk * al, guard=True)
+    if str(e.o.get('stamp', '0')).lower() in ('1', 'true', 'yes', 'on', 'rec'):
+        st = cached(e, 'st', lambda: text_img('Rec   ' + e.o.get('date', '01 Nov 2026'), c.W * 0.03, 'mono', (255, 255, 255), shadow=3))
+        x, y = c.W * 0.09, max(c.H * 0.125, bh + c.H * 0.01)
+        if int(c.lt * 2) % 2 == 0:
+            s = st.height; dot = Image.new('RGBA', (s, s), (0, 0, 0, 0)); r = s * 0.16
+            ImageDraw.Draw(dot).ellipse([s / 2 - r, s / 2 - r, s / 2 + r, s / 2 + r], fill=YELLOW + (255,))
+            comp(c, dot, x - s * 0.6, y, clamp(c.lt / 0.3) * al)
+        comp(c, st, x, y, clamp(c.lt / 0.3) * al, guard=True)
+
+
+def polaroid_card(photo, pw, caption, kind='serif'):
+    """A white instant-photo frame: thin sides, thick bottom with a handwritten caption."""
+    side, bottom = int(pw * 0.06), int(pw * 0.27); ph = pw
+    src = photo.convert('RGB'); s = max(pw / src.width, ph / src.height)
+    src = src.resize((max(pw, int(src.width * s)), max(ph, int(src.height * s))), Image.LANCZOS)
+    l, t = (src.width - pw) // 2, (src.height - ph) // 2
+    src = src.crop((l, t, l + pw, t + ph))
+    fw_, fh_ = pw + 2 * side, ph + side + bottom
+    im = Image.new('RGBA', (fw_, fh_), (250, 248, 242, 255))
+    im.paste(src, (side, side))
+    ImageDraw.Draw(im).rectangle([side, side, side + pw - 1, side + ph - 1], outline=(0, 0, 0, 40), width=2)
+    if caption:
+        size = pw * 0.11; f = font(kind, size)                              # mixed-case font (the marker font is all caps)
+        while f.getlength(caption) > pw * 0.95 and size > 10: size *= 0.92; f = font(kind, size)
+        ImageDraw.Draw(im).text((fw_ / 2, side + ph + bottom * 0.5), caption, font=f, fill=INK + (235,), anchor='mm')
+    return shadowed(im, blur=max(8, pw // 28), dy=pw // 30, alpha=150)
+
+
+@effect('polaroid', 'the frame freezes into a polaroid with a caption, drops in over a blurred you, then the video plays on')
+def fx_polaroid(c, e):
+    caps = e.o.get('text', '').split('|')
+    if 'frz' not in e.state:                                                  # the first frame of the window is the photo
+        side = int(min(c.W, c.H) * 0.9); x0 = int(clamp(c.fx - side / 2, 0, c.W - side))
+        y0 = int(clamp(c.fy - side * 0.42, 0, c.H - side))
+        a = (np.clip(c.img, 0, 1) * 255).astype(np.uint8)
+        e.state['frz'] = Image.fromarray(a[y0:y0 + side, x0:x0 + side])
+    pw = int(c.W * float(e.o.get('size', 0.6)))
+    main = cached(e, 'main', lambda: polaroid_card(e.state['frz'], pw, caps[0], e.o.get('font', 'serif')))
+    extra = cached(e, 'extra', lambda: [polaroid_card(im, int(pw * 0.8), caps[j + 1] if j + 1 < len(caps) else '', e.o.get('font', 'serif'))
+                                        for j, im in enumerate(load_cards(e.o.get('images'), [])[:2])])
+    inn, out = clamp(c.lt / 0.3), clamp((e.d - c.lt) / 0.35)
+    # the live video goes soft and dim behind the photo
+    bl = cv2.GaussianBlur(cv2.resize(c.img, (c.W // 6, c.H // 6)), (0, 0), 6)
+    bl = cv2.resize(bl, (c.W, c.H), interpolation=cv2.INTER_LINEAR) * 0.62
+    b = min(inn, out); c.img = c.img * (1 - b) + bl * b
+    cx, cy = c.W * 0.5, c.H * 0.46
+    slots = [(-c.W * 0.15, -c.H * 0.07, 10), (c.W * 0.13, -c.H * 0.05, -9)]       # extras stay out of the right rail
+    for j, im in enumerate(extra):
+        k = ease_back((c.lt - 0.08 - 0.12 * j) / 0.45)
+        if k <= 0: continue
+        dx, dy, r = slots[j]
+        place(c, im, cx + dx, cy + dy - (1 - k) * c.H * 0.6 + (1 - out) * c.H * 0.7, 1.0, r + (1 - k) * 14, clamp(k * 3) * out)
+    k = ease_back((c.lt - 0.12 * len(extra)) / 0.5)
+    if k > 0:
+        rot = float(e.o.get('tilt', -4))
+        place(c, main, cx, cy - (1 - k) * c.H * 0.55 + (1 - out) * c.H * 0.7, 1.0 + 0.25 * (1 - k), rot - (1 - k) * 18, clamp(k * 3) * out)
+    if c.lt < 0.14: c.img = c.img + (1 - c.lt / 0.14) * 0.85 * (1 - c.img)   # shutter flash
+
+
+def paper_texture(c, base, seed=5):
+    """Cardboard/paper: soft blotches + fine fibres on a flat colour."""
+    n1 = _noise_tile(c, 'blot', 24, seed) - 0.5; n2 = _noise_tile(c, 'fib', 1, seed + 1) - 0.5
+    fib = cv2.GaussianBlur(n2, (0, 0), 0.8)
+    return np.clip(np.float32(base)[None, None] / 255 * (1 + n1[..., None] * 0.16 + fib[..., None] * 0.12), 0, 1)
+
+
+def torn_mask(c, y_frac, tilt, seed=8):
+    """Mask of a paper sheet below a torn edge (1 = sheet) and the white fibre fringe along the tear."""
+    rnd = random.Random(seed); pts = []; n = 90
+    for i in range(n + 1):
+        x = c.W * i / n; y = c.H * (y_frac + tilt * (i / n - 0.5)) + rnd.uniform(-1, 1) * c.W * 0.008 + math.sin(i * 0.7 + seed) * c.W * 0.006
+        pts.append((x, y))
+    def poly(dy, jit):
+        r2 = random.Random(seed + 11); q = [(x, y + dy + r2.uniform(-jit, jit)) for x, y in pts]
+        m = Image.new('L', (c.W, c.H), 0); ImageDraw.Draw(m).polygon(q + [(c.W, c.H), (0, c.H)], fill=255)
+        return np.asarray(m, np.float32) / 255
+    sheet = cv2.GaussianBlur(poly(0, 0), (0, 0), 0.8)
+    fringe = cv2.GaussianBlur(poly(-c.W * 0.007, c.W * 0.004), (0, 0), 0.8)
+    return sheet, np.clip(fringe - sheet, 0, 1)
+
+
+@effect('paper-cut', 'you become a paper cut-out with a white border on cardboard with a torn sheet, optional big word behind you')
+def fx_paper_cut(c, e):
+    k = ramp(c, e, 0.3, 0.25)
+    def bg():
+        b = paper_texture(c, rgb(e.o.get('paper'), (196, 164, 120)))
+        sheet, fringe = torn_mask(c, float(e.o.get('tear', 0.52)), float(e.o.get('tilt', -0.06)))
+        sh = cv2.GaussianBlur(np.roll(sheet, -int(c.W * 0.006), 0), (0, 0), c.W * 0.008)
+        b = b * (1 - 0.35 * sh[..., None] * (1 - sheet[..., None]))
+        pap = paper_texture(c, rgb(e.o.get('color'), CREAM), 9)
+        b = b * (1 - sheet[..., None]) + pap * sheet[..., None]
+        return np.clip(b * (1 - fringe[..., None]) + np.float32([0.98, 0.97, 0.95]) * fringe[..., None], 0, 1).astype(np.float32)
+    B = cached(e, 'bg', bg).copy()
+    # the cut-out: the person matte grown into a white paper border, with a drop shadow on the board
+    bw = max(4, int(c.W * float(e.o.get('border', 0.016))))
+    hard = (cv2.GaussianBlur(c.m, (0, 0), max(2, c.W * 0.006)) > 0.5).astype(np.uint8)   # smooth scissor line
+    dil = cv2.dilate(hard, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * bw + 1, 2 * bw + 1)))
+    dil = cv2.GaussianBlur(dil.astype(np.float32), (0, 0), 1.2)
+    real_img, real_m = c.img, c.m
+    if e.o.get('text'):
+        word = e.o['text']; col = rgb(e.o.get('word_color'), YELLOW)
+        def mk():
+            im = fit_text(word, c.W * 0.92, e.o.get('font', 'anton'), 600, fill=col)
+            pad = Image.new('RGBA', (im.width + 16, im.height + 16), (0, 0, 0, 0))
+            sh = Image.new('RGBA', im.size, INK + (255,)); sh.putalpha(im.split()[3])
+            pad.alpha_composite(sh, (12, 12)); pad.alpha_composite(im, (0, 0)); return pad
+        w = cached(e, 'w', mk)
+        wy = max(c.H * 0.12 + w.height / 2, c.fy - c.fw * 0.9)
+        c.img, c.m = B, dil
+        place(c, w, c.W / 2 * 0.6 + c.fx * 0.4, wy, 0.92 + 0.08 * ease_back(c.lt / 0.4), 3, clamp(c.lt / 0.15) * clamp((e.d - c.lt) / 0.2), behind=True)
+        B = c.img; c.img, c.m = real_img, real_m
+    shd = cv2.GaussianBlur(np.roll(np.roll(dil, int(c.W * 0.012), 0), int(c.W * 0.008), 1), (0, 0), c.W * 0.012)
+    out = B * (1 - 0.45 * shd[..., None])
+    out = out * (1 - dil[..., None]) + np.float32([0.985, 0.98, 0.97]) * dil[..., None]
+    person = np.clip((c.img - 0.5) * 1.06 + 0.5, 0, 1)                      # a touch of print contrast
+    out = out * (1 - real_m[..., None]) + person * real_m[..., None]
+    c.img = c.img * (1 - k) + out * k
 
 
 # Optional private effects (not part of the public pack). If fx_private.py sits next to this file, its effects load too.

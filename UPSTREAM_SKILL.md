@@ -1,9 +1,9 @@
 ---
 name: effects
-description: Add any of 45 video effects to a talking-head video (orbit, spotlight, glass widgets, timeline, checklist, headline wall, comment box, phone fan, liquid glass graph, match-cut, iPhone toggles, LED sign, over-the-shoulder zoom, iMessage pop-ups, place-in-grid and more). Effects track the speaker's face and can sit behind their head. Use when the user types /effects, names one of the effects, or asks to add an effect, zoom, grade, sticker or animation to their video.
+description: Add any of 48 video effects to a talking-head video (orbit, spotlight, glass widgets, timeline, checklist, headline wall, comment box, phone fan, liquid glass graph, match-cut, iPhone toggles, LED sign, over-the-shoulder zoom, iMessage pop-ups, place-in-grid, documentary, polaroid, paper-cut and more). Effects track the speaker's face and can sit behind their head. Use when the user types /effects, names one of the effects, or asks to add an effect, zoom, grade, sticker or animation to their video.
 ---
 
-# Effects: 45 starter video effects (by @vibha.in.progress)
+# Effects: 48 starter video effects (by @vibha.in.progress)
 
 The user is usually not technical. Keep replies short and friendly, do the work for them, and never ask them to run commands themselves.
 
@@ -38,7 +38,7 @@ Run `bash scripts/setup.sh`. It prints `READY` when done (the first time takes 1
 
 A single effect needs no plan: `.venv/bin/python scripts/fx.py orbit <video> <out.mp4> --start 3 --end 6 --text "..." --opt key=value`.
 
-## The 45 effects
+## The 48 effects
 | # | `fx` name | What it does | Options (all optional) |
 |---|---|---|---|
 | 1 | `noise` | Reels pile up behind your head, one every quarter second | `images` (folder of screenshots or clips), `size` |
@@ -86,6 +86,9 @@ A single effect needs no plan: `.venv/bin/python scripts/fx.py orbit <video> <ou
 | 43 | `over-the-shoulder-zoom` | The camera pushes into one top corner and a see-through liquid glass graph pops beside your head (line climbs, number counts up), pulls back, then the other corner with a second, related bar graph. Your head stays in front | `text` (two labels with `\|`), `to` (two numbers with `\|`, e.g. `197K\|672K`), `zoom` (default 2.0) |
 | 44 | `messages` | iMessage notifications pop in one after another, creamy glass with a soft glow, stacking up above the bottom of the frame | `text` (messages with `\|`), `title` (default Messages), `y` |
 | 45 | `place-in-grid` | You shrink into the centre tile of your 3x3 profile grid on frosted glass, then 8 reels pop in around you, one per frame, with Instagram view counts on every tile | `images` (folder of your reels or covers), `views` (9 counts with `\|`, the 9th is yours) |
+| 46 | `documentary` | Film look on you: black bars (2.39 on landscape, `bars` of the height on 9:16), muted teal-orange grade, fine grain, vignette; optional name strip and Rec/date stamp | `text` (name strip `Name\|Title`), `stamp` (1 = on, off by default), `date`, `bars` (default 0.11), `ratio`, `grain` |
+| 47 | `polaroid` | Shutter flash, the frame freezes into a polaroid with a caption that drops in tilted over a blurred you, then slides away and the video plays on | `text` (captions with `\|`), `images` (folder: 2 more photos stacked behind), `tilt`, `size`, `font` |
+| 48 | `paper-cut` | You become a paper cut-out with a white border and drop shadow on cardboard with a torn white sheet; optional big word behind you | `text` (the word), `paper` (board colour), `color` (sheet), `word_color`, `tear`, `tilt`, `border`, `font` |
 
 **Named looks** (same effect, a fancier look; they don't add to the count):
 - `glitter-spotlight` = `spotlight` with `look=sparkle`: the room goes dark, golden rays burst from behind your head, a big gold word with a shine sweep, twinkling sparkles and a glow around you. `text` (the word), `color`, `push`.
